@@ -54,7 +54,7 @@ from network_monitor import SLEEP_PERIOD
 
 #import qos_metric
 MIN_HOP_ROUTING=False
-PRIO_QUEUEING_ENABLED=False
+PRIO_QUEUEING_ENABLED=True
 # PORT_QUEUEING=False
 #SLEEP_PERIOD = 3
 SHOW_ADD_FLOW = True
@@ -1654,21 +1654,34 @@ class Shortest_Route(app_manager.RyuApp):
 
         # visited = {initial: 0}
 
-        pathList = nx.single_source_shortest_path(NETQX, initial)
-        #self.logger.info('WWWWWWWXXXXXXXXXX  %s ',pathList[4])
 
-        # path[4]
 
-        visited = {initial: [LINK_SPEED, 1, 0, 10]}
 
-        # visited = {initial: [1000, 0, 0, 0]}
-        # visited = [99909,9990,99999990]
+
+        visited = {initial: [LINK_SPEED, 1, 0, 10,LINK_SPEED]}
+
+
 
         path = {}
         beta = 0.8
 
         nodes = set(graph.nodes)
         edges = set(graph.edges)
+
+        pathList = nx.single_source_shortest_path(NETQX, initial)
+        HMAX = len(nodes)-1
+        self.logger.info('dijkstraaaaaaaaaaaaaaaaaa HMAXX: %s - %s', pathList,HMAX)
+
+        # self.logger.info('dijkstraaaaaaaaaaaaaaaaaa PATH=LIST: %s ', pathList)
+        #
+        # for edge in graph[initial]:
+        #     self.logger.info('dijkstraaaaaaaaaaaaaaaaaa HMAXX: %s - %s', edge,len(pathList[edge]))
+        #
+        #     if LongestPathLen<len(pathList[edge]):
+        #         LongestPathLen = len(pathList[edge])
+        #
+        # self.logger.info('dijkstraaaaaaaaaaaaaaaaaa HMAXX: %s -', LongestPathLen)
+
         ##self.logger.info('dijkstraaaaaaaaaaaaaaaaaa %s ', nodes)
         ##self.logger.info('dijkstraaaaaaaaaaaaaaaaaa %s ', edges)
         ##self.logger.info('dijkstraaaaaaaaaaaaaaaaaa 2 %s ', graph.edges)
@@ -1725,18 +1738,24 @@ class Shortest_Route(app_manager.RyuApp):
 
                         #queue_load=graph[min_node][edge]['queue_id_47'][0]*0.618+graph[min_node][edge]['queue_id_31'][0]*0.618+ graph[min_node][edge]['queue_id_15'][0]*1
                         queue_load = graph[min_node][edge]['queue_id_0'][0]
+                        #queue_load_prio = graph[min_node][edge]['queue_id_15'][0]
+                        queue_load_prio = 0
+
 
                     elif mode == 'bw':
                         #queue_load=graph[min_node][edge]['queue_id_47'][0]*0.618+graph[min_node][edge]['queue_id_31'][0]*1+ graph[min_node][edge]['queue_id_15'][0]*1.618
                         # queue_load = graph[min_node][edge]['queue_id_47'][0]+graph[min_node][edge]['queue_id_31'][0]*1.618+ graph[min_node][edge]['queue_id_15'][0]*2.617
 
                         queue_load = graph[min_node][edge]['queue_id_0'][0]
+                        queue_load_prio =  graph[min_node][edge]['queue_id_15'][0]
+
 
                     elif mode == None:
                         # queue_load = graph[min_node][edge]['queue_id_47'][0]+graph[min_node][edge]['queue_id_31'][0]*1.618+ graph[min_node][edge]['queue_id_15'][0]*2.617
                         queue_load = graph[min_node][edge]['queue_id_0'][0]
+                        queue_load_prio=graph[min_node][edge]['queue_id_31'][0]+ graph[min_node][edge]['queue_id_15'][0]
 
-                    unreserved_bw=LINK_SPEED-queue_load
+                    unreserved_bw = LINK_SPEED-queue_load
                     if unreserved_bw<0:
                         self.logger.info('dijkstraaaaaaaaaaaaaaaaaa NO PATH - NEGATIVE BW')
                         unreserved_bw=0
@@ -1746,21 +1765,26 @@ class Shortest_Route(app_manager.RyuApp):
 
                     # if unreserved_bw>BW_MAX:
 
-
+                    unreserved_prio_bw=LINK_SPEED-queue_load_prio
 
                     pathBw = min(current_weight[0], unreserved_bw)
+                    pathPrioBw = min(current_weight[0], unreserved_prio_bw)
+                    self.logger.info('dijkstraaaaaaaaaaaaaaaaaa 111 Path PRIO BW: %s == current_weight(4):%s === unreserved_prio_bw: %s ',pathPrioBw, current_weight[4],unreserved_prio_bw)
 
                     ##pathDelay = current_weight[1] + graph[min_node][edge][queue_id][1]
                     hopCount = current_weight[2] + 1
                     #self.logger.info('dijkstraaaaaaaaaaaaaaaaaa1111 = pathBw:%s = current_weight[0]:%s ==== loopP graph edge: %s ',pathBw,current_weight[0],graph[min_node][edge])
 
                     fuzzBw = self.calc_pxy(pathBw, 100, LINK_SPEED)
+                    fuzzPrioBw = self.calc_pxy(pathPrioBw, 100, LINK_SPEED)
+
+                    #fuzzPrioBw = self.calc_prio_pxy(pathPrioBw, 100, LINK_SPEED)
                     fuzzHop = self.calc_hxy(hopCount, 1, 6)
                     self.logger.info('dijkstraaaaaaaaaaaaaaaaaa111 -- current_weight:%s - unreserved_bw: %s ', current_weight, unreserved_bw)
 
                     self.logger.info('dijkstraaaaaaaaaaaaaaaaaa222 -- Graph Bw:%s - ', graph[min_node][edge][queue_id][0])
 
-                    self.logger.info('dijkstraaaaaaaaaaaaaaaaaa222 -- loopP graph edge: Bw:%s - FuzBw: %s -##-  Hop:%s -- fuzHop:%s ', pathBw,fuzzBw,hopCount,fuzzHop)
+                    self.logger.info('dijkstraaaaaaaaaaaaaaaaaa222 -- loopP graph edge: Bw:%s - FuzBw: %s -# fuzBW PRIO: %s #-  Hop:%s -- fuzHop:%s ', pathBw,fuzzBw,fuzzPrioBw,hopCount,fuzzHop)
 
                     #
                     S_u=1/(1.0+len(pathList[edge]))
@@ -1772,11 +1796,18 @@ class Shortest_Route(app_manager.RyuApp):
                     self.logger.info("dijkstraaaaaaaaaaaaaaaaaa <S_u: %s> lxy: %s --- unresv_load:%s -----Sj:%s ", S_u,lxy,unresv_load,S_j)
 
                     # fuzzBw = calc_pxy(pathDelay, 100, 1000)
-                    fuzzTotal = beta * min(fuzzBw, fuzzHop,lxy) + (1 - beta) * 1 / 3 * (fuzzBw + fuzzHop+lxy)
+                    if mode == 'delay':
+                        fuzzTotal = beta * min(fuzzBw, fuzzHop,lxy) + (1 - beta) * 1 / 3 * (fuzzBw + fuzzHop+lxy)
+                    else:
+                        fuzzTotal = beta * min(fuzzBw, fuzzPrioBw, fuzzHop, lxy) + (1 - beta) * 1 / 4 * (
+                        fuzzBw + fuzzPrioBw + fuzzHop + lxy)
 
-                    weight = [pathBw, lxy, hopCount, fuzzTotal]
+
+                    weight = [pathBw, lxy, hopCount, fuzzTotal,fuzzPrioBw]
+                    #weight = [pathBw, lxy, hopCount, fuzzTotal,fuzzPrioBw]
+
                     self.logger.info('dijkstraaaaaaaaaaaaaaaaaa333 loopP graph edge: Total: %s -- weight:%s ', fuzzTotal,weight)
-                    self.logger.info('dijkstraaaaaaaaaaaaaaaaaa333aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+                    self.logger.info('dijkstraaaaaaaaaaaaaaaaaa333aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa %s',fuzzPrioBw)
 
                     '''
                     weight = [2,2,hopCount,2]

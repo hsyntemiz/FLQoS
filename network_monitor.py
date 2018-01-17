@@ -358,7 +358,7 @@ class Network_Monitor(app_manager.RyuApp):
                 period=(stat.duration_sec + float(stat.duration_nsec/1000000000.0) - prev_time)
 
                 rate=8*(stat.tx_bytes-prev_tx)/period
-                rate=rate*2 # enterasan bir sekilde rate'in yarisini goruyorum istatistiklerde
+                #rate=rate*2 # enterasan bir sekilde rate'in yarisini goruyorum istatistiklerde
 
                 #Error tx count in stat period
                 error_count=stat.tx_errors-prev_txerror
@@ -375,7 +375,9 @@ class Network_Monitor(app_manager.RyuApp):
                     dst = link_to_neighbor[src, src_port]
 
                     queue_id='queue_id_' + str(stat.queue_id)
-                    self.logger.info('Quueue ID: %s #%s# %s',queue_id,NETQX[src][dst],self.queue_stats)
+                    #self.logger.info('Quueue ID: %s #%s# %s',queue_id,NETQX[src][dst],self.queue_stats)
+
+                    ##self.logger.info('Quueue ID: %s #%s# ', queue_id, NETQX[src][dst])
                     tuple=NETQX[src][dst][queue_id]
 
 
@@ -384,7 +386,10 @@ class Network_Monitor(app_manager.RyuApp):
 
                     if stat.queue_id==15:
                         ro=rate/LINK
-                        W=1/(1-ro)
+                        #W=1/(1-ro)
+                        W=0
+
+
                     elif stat.queue_id==31:
                         rate_0=NETQX[src][dst]['queue_id_15'][0]
                         ro_0=rate_0/LINK
@@ -392,7 +397,9 @@ class Network_Monitor(app_manager.RyuApp):
                         rate_1 = NETQX[src][dst]['queue_id_31'][0]
                         ro_1 = rate_1 / LINK
 
-                        W= 1 / ((1-ro_0)*(1-ro_0-ro_1))
+                        #W= 1 / ((1-ro_0)*(1-ro_0-ro_1))
+                        W = rate_0
+
 
                     elif stat.queue_id== 47:
                         rate_0 = NETQX[src][dst]['queue_id_15'][0]
@@ -404,9 +411,12 @@ class Network_Monitor(app_manager.RyuApp):
                         rate_2 = NETQX[src][dst]['queue_id_47'][0]
                         ro_2 = rate_2 / LINK
 
-                        W = 1 / ((1 - ro_0-ro_1) * (1 - ro_0 - ro_1-ro_2))
+                        #W = 1 / ((1 - ro_0-ro_1) * (1 - ro_0 - ro_1-ro_2))
+                        W=rate_0 + rate_1
 
                     NETQX[src][dst][queue_id]=(rate,error_count+6,W,tuple[3])
+                    #self.logger.info('Quueue ID: %s #%s# ', queue_id, NETQX[src][dst])
+
 
 
             else:
