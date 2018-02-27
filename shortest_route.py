@@ -1688,11 +1688,13 @@ class Shortest_Route(app_manager.RyuApp):
 
                     #fuzzPrioBw = self.calc_prio_pxy(pathPrioBw, 100, LINK_SPEED)
                     fuzzHop = self.calc_hxy(hopCount, 1, 6)
+
+                    fuzzError= self.calc_err(error_rate,5,120)
                     #1#self.logger.info('dijkstraaaaaaaaaaaaaaaaaa111 -- current_weight:%s - unreserved_bw: %s ', current_weight, unreserved_bw)
 
                     #1#self.logger.info('dijkstraaaaaaaaaaaaaaaaaa222 -- Graph Bw:%s - ', graph[min_node][edge][queue_id][0])
 
-                    #1#self.logger.info('dijkstraaaaaaaaaaaaaaaaaa222 -- loopP graph edge: Bw:%s - FuzBw: %s -# fuzBW PRIO: %s #-  Hop:%s -- fuzHop:%s ', pathBw,fuzzBw,fuzzPrioBw,hopCount,fuzzHop)
+                    self.logger.info('dijkstraaaaaaaaaaaaaaaaaa222 -- loopP graph edge: Bw:%s - FuzBw: %s -# fuzBW PRIO: %s #-  Hop:%s -- fuzHop:%s # fuzzErr:%s', pathBw,fuzzBw,fuzzPrioBw,hopCount,fuzzHop,fuzzError)
 
                     #
                     S_u=1/(1.0+len(pathList[edge]))
@@ -1706,13 +1708,13 @@ class Shortest_Route(app_manager.RyuApp):
                     # fuzzBw = calc_pxy(pathDelay, 100, 1000)
                     if mode == 'delay':
                         #fuzzTotal = beta * min(fuzzBw, fuzzHop,lxy) + (1 - beta) * 1 / 3 * (fuzzBw + fuzzHop+lxy)
-                        fuzzTotal = beta * min(fuzzBw, fuzzHop) + (1 - beta) * 1 / 2 * (fuzzBw + fuzzHop) +error_rate
+                        fuzzTotal = beta * min(fuzzBw, fuzzHop ,fuzzError) + (1 - beta) * 1 / 3 * (fuzzBw + fuzzHop +fuzzError)
 
                     else:
                         #fuzzTotal = beta * min(fuzzBw, fuzzPrioBw, fuzzHop, lxy) + (1 - beta) * 1 / 4 * (
                         #fuzzBw + fuzzPrioBw + fuzzHop + lxy)
-                        fuzzTotal = beta * min(fuzzBw, fuzzPrioBw, fuzzHop) + (1 - beta) * 1 / 3 * (fuzzBw + fuzzPrioBw + fuzzHop )+error_rate
-                        self.logger.info("dijkstra Fuzz HOP(%s): %s>   ", hopCount,fuzzHop)
+                        fuzzTotal = beta * min(fuzzBw, fuzzPrioBw, fuzzHop, fuzzError) + (1 - beta) * 1 / 4 * (fuzzBw + fuzzPrioBw + fuzzHop +fuzzError)
+                        self.logger.info("dijkstra Fuzz HOP(%s): %s> fuzzError: %s   ", hopCount,fuzzHop,fuzzError)
 
 
 
@@ -1765,6 +1767,16 @@ class Shortest_Route(app_manager.RyuApp):
 
         if maxBw <= x:
             return 1
+
+    def calc_err(self, x, minErr, maxErr):
+        m = 0.4
+        if x <= minErr:
+            return 1
+        if minErr < x <= maxErr:
+            return ((maxErr - x) * (1 - m) / (maxErr - minErr)) + m
+            # return (x-minH)/(3/4*(maxH-minH))
+        if maxErr < x:
+            return 0
 
     def calc(self, input1, input2, input3):
 
@@ -1866,6 +1878,7 @@ class Shortest_Route(app_manager.RyuApp):
         #########################################################
 
     def calc_hxy(self, x, minH, maxH):
+
         m = 0.4
         if x <= minH:
             return 1
