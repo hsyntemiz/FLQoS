@@ -2273,12 +2273,17 @@ class Shortest_Route(app_manager.RyuApp):
     def link_down_action_handler(self,ev):
 
 
+
         src_dp=ev.src_dp
         dst_dp=ev.dst_dp
         status=ev.status
+        if status=='congested':
+            subpath = [src_dp, dst_dp]
+            self.logger.info('event: LINK (%s-%s) IS %s !!!! ', src_dp,dst_dp,status)
+            self.check_down_link_usage(subpath)
 
         #UPDATE LINKS IN NETX AND NETQX
-        if status=='down':
+        elif status=='down':
 
             subpath=[src_dp,dst_dp]
             subpath_rev=[dst_dp,src_dp]

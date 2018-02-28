@@ -87,6 +87,7 @@ class Network_Monitor(app_manager.RyuApp):
     def _monitor(self):
         hub.sleep(5)
         while True:
+
             self.stats['flow'] = {}
             self.stats['port'] = {}
             for dp in self.datapaths.values():
@@ -96,6 +97,7 @@ class Network_Monitor(app_manager.RyuApp):
             self.send_flow_stats_request_all()
 
             hub.sleep(SLEEP_PERIOD)
+            self.congestion_detect()
             if STAT_TO_DB and (self.stats['flow'] or self.stats['port']):
                 self.show_stat('flow', self.stats['flow'])
                 self.show_stat('port', self.stats['port'])
@@ -414,7 +416,7 @@ class Network_Monitor(app_manager.RyuApp):
                         #W = 1 / ((1 - ro_0-ro_1) * (1 - ro_0 - ro_1-ro_2))
                         W=rate_0 + rate_1
 
-                    NETQX[src][dst][queue_id]=(rate,error_count+6,W,tuple[3])
+                    NETQX[src][dst][queue_id]=(rate,error_count,W,tuple[3])
                     #self.logger.info('----sw:%s-port:%s------Quueue ID: %s #%s# ', ev.msg.datapath.id,stat.port_no,queue_id, NETQX[src][dst])
 
 
@@ -479,6 +481,7 @@ class Network_Monitor(app_manager.RyuApp):
         self.logger.info('-------------->>>>>> DOWN PORTS LIST: %s',DOWN_PORTS)
 
 
+
     @set_ev_cls(ofp_event.EventOFPStateChange,
                 [MAIN_DISPATCHER, DEAD_DISPATCHER])
     def switch_state_handler(self, ev):
@@ -499,3 +502,29 @@ class Network_Monitor(app_manager.RyuApp):
         self.logger.info('PORT STATUS CHANGED---->>>>>> DOWN PORTS  allah allah allah %s',ev.link)
 
 
+    def congestion_detect(self):
+        self.logger.info('MONITOR --- NETQX EDGES %s',NETQX.edges())
+
+        for edge in NETQX.edges():
+            src, dst = edge
+            error_rate = NETQX[src][dst]['queue_id_47'][1]
+            if error_rate>10:
+                self.logger.info('MONITOR --- EDGE [%s-%s] is CONGESTED = Rate: %s',src,dst, error_rate)
+                self.send_event_to_observers(EventLinkDown('congested', src, dst))
+
+
+
+
+
+
+                # datapath=self.datapaths[dp]
+            # ofp = datapath.ofproto
+            # ofp_parser = datapath.ofproto_parser
+            # cookie = cookie_mask = 0
+            # match = ofp_parser.OFPMatch()
+            #
+            # req = ofp_parser.OFPFlowStatsRequest(datapath, 0,
+            #                              ofp.OFPTT_ALL,
+            #                              ofp.OFPP_ANY, ofp.OFPG_ANY,
+            #                              cookie, cookie_mask)
+            # datapath.send_msg(req)
