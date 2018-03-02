@@ -59,6 +59,7 @@ PRIO_QUEUEING_ENABLED=True
 #SLEEP_PERIOD = 3
 SHOW_ADD_FLOW = True
 SHOW_ACCESS_TABLE=False
+SIMULATION_MODE=True
 Q15_BUF=30000000
 Q31_BUF=30000000
 Q47_BUF=60000000
@@ -1256,6 +1257,29 @@ class Shortest_Route(app_manager.RyuApp):
             #sql_request="select *,case src_ip when '%s' then 1 else 0 end + case src_mac when '%s' then 1 else 0 end + case dst_ip when '%s' then 1 else 0 end + case dst_mac when '%s' then 1 else 0 end + case ip_proto when '%s' then 1 else 0 end + case src_port when '%s' then 1 else 0 end + case dst_port when '%s' then 1 else 0 end as matches from policies order by matches desc"  % (
             #src_ip, src_mac, dst_ip, dst_mac, protocol, src_port, dst_port)
 
+            if SIMULATION_MODE:
+                id=1
+                sql_request_simulation="SELECT var1,var2 FROM Simulation WHERE SimulID='%d';" % (id)
+
+
+                self.logger.info("--------------------> SIMULATION   SQL_REQUEST: %s", sql_request_simulation)
+
+                cur = self.db.cursor()
+                cur.execute(sql_request_simulation)
+                # print all the first cell of all the rows
+                routing, prio = cur.fetchmany(size=1)[0]
+                if routing == 'HQoS':
+                    MIN_HOP_ROUTING = False
+                else:
+                    MIN_HOP_ROUTING = True
+
+                if prio=='Prio':
+                    PRIO_QUEUEING_ENABLED = True
+                else:
+                    PRIO_QUEUEING_ENABLED = False
+                self.logger.info("SIMULATION (MATCHED) routin:%s# prio:%s",routing,prio )
+
+            #######################################
             src_ip=self.ip2bin(src_ip)
             dst_ip=self.ip2bin(dst_ip)
 
